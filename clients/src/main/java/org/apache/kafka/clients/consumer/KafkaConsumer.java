@@ -543,6 +543,7 @@ import java.util.regex.Pattern;
 public class KafkaConsumer<K, V> implements Consumer<K, V> {
 
     private static final long NO_CURRENT_THREAD = -1L;
+    //clientId生成器
     private static final AtomicInteger CONSUMER_CLIENT_ID_SEQUENCE = new AtomicInteger(1);
     private static final String JMX_PREFIX = "kafka.consumer";
     static final long DEFAULT_CLOSE_TIMEOUT_MS = 30 * 1000;
@@ -551,16 +552,23 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
     final Metrics metrics;
 
     private final Logger log;
+    //
     private final String clientId;
+    //消费协调者
     private final ConsumerCoordinator coordinator;
     private final Deserializer<K> keyDeserializer;
     private final Deserializer<V> valueDeserializer;
+    //负责从服务端获取消息
     private final Fetcher<K, V> fetcher;
+    //拦截器
     private final ConsumerInterceptors<K, V> interceptors;
 
     private final Time time;
+    //负责消费者与kafka服务端的网络通信
     private final ConsumerNetworkClient client;
+    //维护了消费者的消费状态
     private final SubscriptionState subscriptions;
+    //记录集群的元数据信息
     private final Metadata metadata;
     private final long retryBackoffMs;
     private final long requestTimeoutMs;
@@ -571,6 +579,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
     // and is used to prevent multi-threaded access
     private final AtomicLong currentThread = new AtomicLong(NO_CURRENT_THREAD);
     // refcount is used to allow reentrant access by the thread who has acquired currentThread
+    //重入次数
     private final AtomicInteger refcount = new AtomicInteger(0);
 
     /**

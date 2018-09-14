@@ -26,6 +26,7 @@ import java.util.Map;
 
 /**
  * The set of requests which have been sent or are being sent but haven't yet received a response
+ * 已经发出去但是未收到响应的ClientRequest
  */
 final class InFlightRequests {
 
@@ -85,12 +86,13 @@ final class InFlightRequests {
 
     /**
      * Can we send more requests to this node?
-     *
+     * 判断是否可以向指定的Node发送请求
      * @param node Node in question
      * @return true iff we have no requests still being sent to the given node
      */
     public boolean canSendMore(String node) {
         Deque<NetworkClient.InFlightRequest> queue = requests.get(node);
+        //队头的请求是否已经完成 && 是否堆积了过多的请求
         return queue == null || queue.isEmpty() ||
                (queue.peekFirst().send.completed() && queue.size() < this.maxInFlightRequestsPerConnection);
     }
