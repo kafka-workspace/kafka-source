@@ -45,14 +45,20 @@ import java.util.concurrent.atomic.AtomicReference;
 public class RequestFuture<T> implements ConsumerNetworkClient.PollCondition {
 
     private static final Object INCOMPLETE_SENTINEL = new Object();
+
+
     private final AtomicReference<Object> result = new AtomicReference<>(INCOMPLETE_SENTINEL);
+    //监听请求完成的情况
     private final ConcurrentLinkedQueue<RequestFutureListener<T>> listeners = new ConcurrentLinkedQueue<>();
+
+
     private final CountDownLatch completedLatch = new CountDownLatch(1);
 
     /**
      * Check whether the response is ready to be handled
      * @return true if the response is ready, false otherwise
      */
+    //表示当前请求是是否已经完成
     public boolean isDone() {
         return result.get() != INCOMPLETE_SENTINEL;
     }
@@ -104,6 +110,7 @@ public class RequestFuture<T> implements ConsumerNetworkClient.PollCondition {
      * @return the exception set in {@link #raise(RuntimeException)}
      * @throws IllegalStateException if the future is not complete or completed successfully
      */
+    //记录导致请求异常完成的异常类
     public RuntimeException exception() {
         if (!failed())
             throw new IllegalStateException("Attempt to retrieve exception from future which hasn't failed");
@@ -191,6 +198,7 @@ public class RequestFuture<T> implements ConsumerNetworkClient.PollCondition {
     }
 
     /**
+     * 适配器模式
      * Convert from a request future of one type to another type
      * @param adapter The adapter which does the conversion
      * @param <S> The type of the future adapted to
@@ -212,10 +220,15 @@ public class RequestFuture<T> implements ConsumerNetworkClient.PollCondition {
         return adapted;
     }
 
+    /**
+     * 责任链模式
+     * @param future
+     */
     public void chain(final RequestFuture<T> future) {
         addListener(new RequestFutureListener<T>() {
             @Override
             public void onSuccess(T value) {
+                //通过监听器将value传递给下一个RequestFuture对象
                 future.complete(value);
             }
 

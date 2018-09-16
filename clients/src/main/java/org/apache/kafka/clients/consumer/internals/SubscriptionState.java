@@ -57,23 +57,40 @@ public class SubscriptionState {
     private static final String SUBSCRIPTION_EXCEPTION_MESSAGE =
             "Subscription to topics, partitions and pattern are mutually exclusive";
 
+    /**
+     * AUTO_TOPICS    按照指定的Topic进行订阅,自动分配分区
+     * AUTO_PATTERN   按照指定的正则表达式订阅，自动分配分区
+     * USER_ASSIGNED  手动指定消费者消费的Topic以及分区编号
+     *
+     *
+     */
     private enum SubscriptionType {
         NONE, AUTO_TOPICS, AUTO_PATTERN, USER_ASSIGNED
     }
 
-    /* the type of subscription */
+    /**
+     * 订阅模式
+     * the type of subscription */
     private SubscriptionType subscriptionType;
 
-    /* the pattern user has requested */
+    /**
+     * 使用AUTO_PATTERN模式时，按照此记得记录的正则表达式对所有Topic进行匹配
+     * the pattern user has requested */
     private Pattern subscribedPattern;
 
-    /* the list of topics the user has requested */
+    /**
+     * AUTO_TOPICS, AUTO_PATTERN两种模式时使用
+     * the list of topics the user has requested */
     private Set<String> subscription;
 
-    /* the list of topics the group has subscribed to (set only for the leader on join group completion) */
+    /**
+     *
+     * the list of topics the group has subscribed to (set only for the leader on join group completion) */
     private final Set<String> groupSubscription;
 
-    /* the partitions that are currently assigned, note that the order of partition matters (see FetchBuilder for more details) */
+    /**
+     * 记录TopicPartition的消费状态
+     * the partitions that are currently assigned, note that the order of partition matters (see FetchBuilder for more details) */
     private final PartitionStates<TopicPartitionState> assignment;
 
     /* do we need to request the latest committed offsets from the coordinator? */
@@ -99,6 +116,7 @@ public class SubscriptionState {
     }
 
     /**
+     * 订阅的模式
      * This method sets the subscription type if it is not already set (i.e. when it is NONE),
      * or verifies that the subscription type is equal to the give type when it is set (i.e.
      * when it is not NONE)
@@ -432,12 +450,21 @@ public class SubscriptionState {
         return map;
     }
 
+
+    /**
+     * TopicPartition的消费状态
+     *
+     *
+     *
+     */
     private static class TopicPartitionState {
-        private Long position; // last consumed position
+
+        private Long position; // 下次要从Kafka服务端获取的消息的offset  last consumed position
         private Long highWatermark; // the high watermark from last fetch
         private Long lastStableOffset;
-        private OffsetAndMetadata committed;  // last committed position
-        private boolean paused;  // whether this partition has been paused by the user
+        private OffsetAndMetadata committed;  //最近一次提交的offset   last committed position
+        private boolean paused;  // 当前TopicPartition是否处于暂停状态，与Consumer接口的pause()相关 whether this partition has been paused by the user
+        //重置position的策略
         private OffsetResetStrategy resetStrategy;  // the strategy to use if the offset needs resetting
 
         public TopicPartitionState() {

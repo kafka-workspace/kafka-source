@@ -57,11 +57,14 @@ public class ConsumerNetworkClient implements Closeable {
     // flag and the request completion queue below).
     private final Logger log;
     private final KafkaClient client;
+    //缓冲队列
     private final UnsentRequests unsent = new UnsentRequests();
     private final Metadata metadata;
     private final Time time;
     private final long retryBackoffMs;
+    //ClientRequest在unsent中缓存的超时时长
     private final long unsentExpiryMs;
+
     private final AtomicBoolean wakeupDisabled = new AtomicBoolean();
 
     // when requests complete, they are transferred to this queue prior to invocation. The purpose
@@ -126,6 +129,8 @@ public class ConsumerNetworkClient implements Closeable {
     }
 
     /**
+     *
+     * 循环调用poll()方法
      * Block waiting on the metadata refresh with a timeout.
      *
      * @return true if update succeeded, false otherwise.
@@ -220,6 +225,14 @@ public class ConsumerNetworkClient implements Closeable {
      * @param now current time in milliseconds
      * @param disableWakeup If TRUE disable triggering wake-ups
      */
+
+    /**
+     *
+     * @param timeout 执行poll()方法的最长阻塞时间(单位ms)
+     * @param now 表示当前时间戳
+     * @param pollCondition
+     * @param disableWakeup
+     */
     public void poll(long timeout, long now, PollCondition pollCondition, boolean disableWakeup) {
         // there may be handlers which need to be invoked if we woke up the previous call to poll
         firePendingCompletedRequests();
@@ -276,6 +289,7 @@ public class ConsumerNetworkClient implements Closeable {
     }
 
     /**
+     * 等待unsent合InFinghtRequests中的请求全部完成
      * Block until all pending requests from the given node have finished.
      * @param node The node to await requests from
      * @param timeoutMs The maximum time in milliseconds to block
@@ -393,6 +407,12 @@ public class ConsumerNetworkClient implements Closeable {
         pollNoWakeup();
     }
 
+    /***
+     *
+     *处理超时请求
+     *
+     * @param now
+     */
     private void failExpiredRequests(long now) {
         // clear all expired unsent requests and fail their corresponding futures
         Collection<ClientRequest> expiredRequests = unsent.removeExpiredRequests(now, unsentExpiryMs);
@@ -434,6 +454,9 @@ public class ConsumerNetworkClient implements Closeable {
         return requestsSent;
     }
 
+    /**
+     * 检测wakeup和wakeupDisabledCount，查看是否有其他线程中断
+     */
     public void maybeTriggerWakeup() {
         if (!wakeupDisabled.get() && wakeup.get()) {
             log.debug("Raising WakeupException in response to user wakeup");
