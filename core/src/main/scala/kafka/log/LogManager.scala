@@ -331,6 +331,8 @@ class LogManager(logDirs: Seq[File],
   }
 
   /**
+    *
+    * 日志刷新和删除
    *  Start the background threads to flush logs and do log cleanup
    */
   def startup() {
@@ -342,22 +344,31 @@ class LogManager(logDirs: Seq[File],
                          delay = InitialTaskDelayMs,
                          period = retentionCheckMs,
                          TimeUnit.MILLISECONDS)
+
+
       info("Starting log flusher with a default period of %d ms.".format(flushCheckMs))
       scheduler.schedule("kafka-log-flusher",
                          flushDirtyLogs _,
                          delay = InitialTaskDelayMs,
                          period = flushCheckMs,
                          TimeUnit.MILLISECONDS)
+
+
+
       scheduler.schedule("kafka-recovery-point-checkpoint",
                          checkpointLogRecoveryOffsets _,
                          delay = InitialTaskDelayMs,
                          period = flushRecoveryOffsetCheckpointMs,
                          TimeUnit.MILLISECONDS)
+
+
       scheduler.schedule("kafka-log-start-offset-checkpoint",
                          checkpointLogStartOffsets _,
                          delay = InitialTaskDelayMs,
                          period = flushStartOffsetCheckpointMs,
                          TimeUnit.MILLISECONDS)
+
+
       scheduler.schedule("kafka-delete-logs",
                          deleteLogs _,
                          delay = InitialTaskDelayMs,
@@ -703,6 +714,7 @@ class LogManager(logDirs: Seq[File],
   }
 
   /**
+    * 日志清除
    * Delete any eligible logs. Return the number of segments deleted.
    * Only consider logs that are not compacted.
    */

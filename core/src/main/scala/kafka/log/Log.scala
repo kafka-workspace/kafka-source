@@ -1576,6 +1576,7 @@ class Log(@volatile var dir: File,
     info("Scheduling log segment %d for log %s for deletion.".format(segment.baseOffset, name))
     lock synchronized {
       segments.remove(segment.baseOffset)
+      //异步删除
       asyncDeleteSegment(segment)
     }
   }
