@@ -20,12 +20,19 @@ package org.apache.kafka.clients.consumer.internals;
  * A helper class for managing the heartbeat to the coordinator
  */
 public final class Heartbeat {
+
+    // session到期时间
     private final long sessionTimeout;
+    // 发送heartbeat的间隔
     private final long heartbeatInterval;
+    // 最大的poll间隔
     private final long maxPollInterval;
+    // 重试时间
     private final long retryBackoffMs;
 
+    // 上一次发送heartbeat时间
     private volatile long lastHeartbeatSend; // volatile since it is read by metrics
+    // 上一次接收heartbeat响应时间
     private long lastHeartbeatReceive;
     private long lastSessionReset;
     private long lastPoll;

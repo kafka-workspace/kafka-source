@@ -923,6 +923,7 @@ public abstract class AbstractCoordinator implements Closeable {
                             AbstractCoordinator.this.wait();
                             continue;
                         }
+                        // 如果消费者状态如果不是STABLE(消费者已经加入消费者组，并且开始发送心跳
 
                         if (state != MemberState.STABLE) {
                             // the group is not stable (perhaps because we left the group or because the coordinator
@@ -933,6 +934,7 @@ public abstract class AbstractCoordinator implements Closeable {
 
                         client.pollNoWakeup();
                         long now = time.milliseconds();
+                        // 检测GroupCoordinator是否已连接
 
                         if (coordinatorUnknown()) {
                             if (findCoordinatorFuture != null || lookupCoordinator().failed())

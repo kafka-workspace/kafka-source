@@ -125,6 +125,18 @@ object AdminUtils extends Logging with AdminUtilities {
    *                                 assign each replica to a unique rack.
    *
    */
+  /**
+    *
+    * Sequence都有一个预定义的顺序。
+    *
+    *
+    * @param brokerMetadatas broker元数据
+    * @param nPartitions     分区数
+    * @param replicationFactor 副本数
+    * @param fixedStartIndex
+    * @param startPartitionId
+    * @return
+    */
   def assignReplicasToBrokers(brokerMetadatas: Seq[BrokerMetadata],
                               nPartitions: Int,
                               replicationFactor: Int,
@@ -134,12 +146,15 @@ object AdminUtils extends Logging with AdminUtilities {
       throw new InvalidPartitionsException("Number of partitions must be larger than 0.")
     if (replicationFactor <= 0)
       throw new InvalidReplicationFactorException("Replication factor must be larger than 0.")
+    //副本因子不能大于Broker的个数
     if (replicationFactor > brokerMetadatas.size)
       throw new InvalidReplicationFactorException(s"Replication factor: $replicationFactor larger than available brokers: ${brokerMetadatas.size}.")
+    //brokerMetadatas中的rack全部为空
     if (brokerMetadatas.forall(_.rack.isEmpty))
       assignReplicasToBrokersRackUnaware(nPartitions, replicationFactor, brokerMetadatas.map(_.id), fixedStartIndex,
         startPartitionId)
     else {
+      //brokerMetadatas中存在rack为空
       if (brokerMetadatas.exists(_.rack.isEmpty))
         throw new AdminOperationException("Not all brokers have rack information for replica rack aware assignment.")
       assignReplicasToBrokersRackAware(nPartitions, replicationFactor, brokerMetadatas, fixedStartIndex,
@@ -147,6 +162,8 @@ object AdminUtils extends Logging with AdminUtilities {
     }
   }
 
+
+  //未设置机架信息
   private def assignReplicasToBrokersRackUnaware(nPartitions: Int,
                                                  replicationFactor: Int,
                                                  brokerList: Seq[Int],
@@ -154,9 +171,11 @@ object AdminUtils extends Logging with AdminUtilities {
                                                  startPartitionId: Int): Map[Int, Seq[Int]] = {
     val ret = mutable.Map[Int, Seq[Int]]()
     val brokerArray = brokerList.toArray
+    //如果设置了fixedStartIndex，否则随机
     val startIndex = if (fixedStartIndex >= 0) fixedStartIndex else rand.nextInt(brokerArray.length)
     var currentPartitionId = math.max(0, startPartitionId)
     var nextReplicaShift = if (fixedStartIndex >= 0) fixedStartIndex else rand.nextInt(brokerArray.length)
+    //分区循环
     for (_ <- 0 until nPartitions) {
       if (currentPartitionId > 0 && (currentPartitionId % brokerArray.length == 0))
         nextReplicaShift += 1
@@ -178,12 +197,14 @@ object AdminUtils extends Logging with AdminUtilities {
     val brokerRackMap = brokerMetadatas.collect { case BrokerMetadata(id, Some(rack)) =>
       id -> rack
     }.toMap
+    //机架的数量
     val numRacks = brokerRackMap.values.toSet.size
     val arrangedBrokerList = getRackAlternatedBrokerList(brokerRackMap)
     val numBrokers = arrangedBrokerList.size
     val ret = mutable.Map[Int, Seq[Int]]()
     val startIndex = if (fixedStartIndex >= 0) fixedStartIndex else rand.nextInt(arrangedBrokerList.size)
     var currentPartitionId = math.max(0, startPartitionId)
+
     var nextReplicaShift = if (fixedStartIndex >= 0) fixedStartIndex else rand.nextInt(arrangedBrokerList.size)
     for (_ <- 0 until nPartitions) {
       if (currentPartitionId > 0 && (currentPartitionId % arrangedBrokerList.size == 0))

@@ -28,6 +28,12 @@ import static org.apache.kafka.common.protocol.CommonFields.GROUP_ID;
 import static org.apache.kafka.common.protocol.CommonFields.MEMBER_ID;
 
 public class HeartbeatRequest extends AbstractRequest {
+
+    /**
+     *
+     *
+     *
+     */
     private static final Schema HEARTBEAT_REQUEST_V0 = new Schema(
             GROUP_ID,
             GENERATION_ID,
