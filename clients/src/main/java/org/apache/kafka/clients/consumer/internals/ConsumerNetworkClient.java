@@ -399,6 +399,7 @@ public class ConsumerNetworkClient implements Closeable {
 
     public void disconnect(Node node) {
         synchronized (this) {
+            //将unsent中缓存的要发送给Coordinator节点的请求全部清空,并标记为异常后结束
             failUnsentRequests(node, DisconnectException.INSTANCE);
             client.disconnect(node.idString());
         }

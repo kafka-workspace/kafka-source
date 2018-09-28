@@ -459,7 +459,7 @@ public class SubscriptionState {
      */
     private static class TopicPartitionState {
 
-        private Long position; // 下次要从Kafka服务端获取的消息的offset  last consumed position
+        private Long position; // TODO 下次要从Kafka服务端获取的消息的offset  last consumed position
         private Long highWatermark; // the high watermark from last fetch
         private Long lastStableOffset;
         private OffsetAndMetadata committed;  //最近一次提交的offset   last committed position

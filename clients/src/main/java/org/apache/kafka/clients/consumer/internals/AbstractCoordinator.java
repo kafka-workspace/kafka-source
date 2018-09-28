@@ -198,6 +198,7 @@ public abstract class AbstractCoordinator implements Closeable {
                                            ByteBuffer memberAssignment);
 
     /**
+     * 向Broker发送GroupCoordinatorRequest
      * Block until the coordinator for this group is known and is ready to receive requests.
      */
     public synchronized void ensureCoordinatorReady() {
@@ -214,8 +215,12 @@ public abstract class AbstractCoordinator implements Closeable {
     protected synchronized boolean ensureCoordinatorReady(long startTimeMs, long timeoutMs) {
         long remainingMs = timeoutMs;
 
+        //检查GroupCoordinator状态
         while (coordinatorUnknown()) {
             RequestFuture<Void> future = lookupCoordinator();
+
+            //创建并缓存请求
+            //阻塞发送GroupCoordinatorRequest,并处理GroupCoordinatorResponse
             client.poll(future, remainingMs);
 
             if (future.failed()) {
@@ -225,6 +230,7 @@ public abstract class AbstractCoordinator implements Closeable {
                         break;
 
                     log.debug("Coordinator discovery failed, refreshing metadata");
+                    //阻塞更新Metadata中记录的集群元数据
                     client.awaitMetadataUpdate(remainingMs);
                 } else
                     throw future.exception();
@@ -622,6 +628,7 @@ public abstract class AbstractCoordinator implements Closeable {
     }
 
     /**
+     * 检测是否需要重新查找GroupCoordinator
      * Check if we know who the coordinator is and we have an active connection
      * @return true if the coordinator is unknown
      */
@@ -634,7 +641,9 @@ public abstract class AbstractCoordinator implements Closeable {
      * @return the current coordinator or null if it is unknown
      */
     protected synchronized Node coordinator() {
+        //检测GroupCoordinator之间的网络连接是否正常
         if (coordinator != null && client.connectionFailed(coordinator)) {
+            //将unsent集合中对应的请求清空并将coordinator字段设置为null
             coordinatorDead();
             return null;
         }
@@ -785,9 +794,16 @@ public abstract class AbstractCoordinator implements Closeable {
         }
     }
 
+    /**
+     * 模板模式
+     * @param <R>
+     * @param <T>
+     */
     protected abstract class CoordinatorResponseHandler<R, T> extends RequestFutureAdapter<ClientResponse, T> {
         protected ClientResponse response;
 
+
+         //对解析后的响应进行处理
         public abstract void handle(R response, RequestFuture<T> future);
 
         @Override
@@ -941,9 +957,11 @@ public abstract class AbstractCoordinator implements Closeable {
                                 // the immediate future check ensures that we backoff properly in the case that no
                                 // brokers are available to connect to.
                                 AbstractCoordinator.this.wait(retryBackoffMs);
+                            //如果超时
                         } else if (heartbeat.sessionTimeoutExpired(now)) {
                             // the session timeout has expired without seeing a successful heartbeat, so we should
                             // probably make sure the coordinator is still healthy.
+                            //数据清空
                             coordinatorDead();
                         } else if (heartbeat.pollTimeoutExpired(now)) {
                             // the poll timeout has expired, which means that the foreground thread has stalled

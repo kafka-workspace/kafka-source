@@ -212,15 +212,18 @@ public final class ConsumerCoordinator extends AbstractCoordinator {
         if (!isLeader)
             assignmentSnapshot = null;
 
+        //查找使用的分配策略
         PartitionAssignor assignor = lookupAssignor(assignmentStrategy);
         if (assignor == null)
             throw new IllegalStateException("Coordinator selected invalid assignment protocol: " + assignmentStrategy);
-
+        //反序列化,更新assignment
         Assignment assignment = ConsumerProtocol.deserializeAssignment(assignmentBuffer);
 
+        //允许从服务端获取最近一次提交的offset
         // set the flag to refresh last committed offsets
         subscriptions.needRefreshCommits();
 
+        //填充assignment集合
         // update partition assignment
         subscriptions.assignFromSubscribed(assignment.partitions());
 
@@ -251,6 +254,7 @@ public final class ConsumerCoordinator extends AbstractCoordinator {
         client.ensureFreshMetadata();
 
         // give the assignor a chance to update internal state based on the received assignment
+        // 回调函数
         assignor.onAssignment(assignment);
 
         // reschedule the auto commit starting from now
@@ -408,6 +412,7 @@ public final class ConsumerCoordinator extends AbstractCoordinator {
     @Override
     protected void onJoinPrepare(int generation, String memberId) {
         // commit offsets prior to rebalance if auto-commit enabled
+        //进行一次同步提交offset操作
         maybeAutoCommitOffsetsSync(rebalanceTimeoutMs);
 
         // execute the user's callback before rebalance
@@ -510,6 +515,9 @@ public final class ConsumerCoordinator extends AbstractCoordinator {
     }
 
     public void commitOffsetsAsync(final Map<TopicPartition, OffsetAndMetadata> offsets, final OffsetCommitCallback callback) {
+
+
+
         invokeCompletedOffsetCommitCallbacks();
 
         if (!coordinatorUnknown()) {
@@ -545,7 +553,11 @@ public final class ConsumerCoordinator extends AbstractCoordinator {
     }
 
     private void doCommitOffsetsAsync(final Map<TopicPartition, OffsetAndMetadata> offsets, final OffsetCommitCallback callback) {
+
+        //将needsFetchCommittedOffsets设置为true
         this.subscriptions.needRefreshCommits();
+        //创建并缓存OffsetCommitRequest请求，逻辑与之前发送JoinGroupRequest和SyncGroupRequest
+        //唯一的区别就是使用OffsetCommitResponseHandler处理OffsetCommitResponse
         RequestFuture<Void> future = sendOffsetCommitRequest(offsets);
         final OffsetCommitCallback cb = callback == null ? defaultOffsetCommitCallback : callback;
         future.addListener(new RequestFutureListener<Void>() {

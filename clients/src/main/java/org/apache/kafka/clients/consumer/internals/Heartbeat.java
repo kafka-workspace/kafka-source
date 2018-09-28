@@ -90,6 +90,9 @@ public final class Heartbeat {
             return delayToNextHeartbeat - timeSinceLastHeartbeat;
     }
 
+
+
+    //检测HeartbeatResponse是否超时
     public boolean sessionTimeoutExpired(long now) {
         return now - Math.max(lastSessionReset, lastHeartbeatReceive) > sessionTimeout;
     }
