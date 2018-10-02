@@ -92,18 +92,26 @@ import static org.apache.kafka.common.serialization.ExtendedDeserializer.Wrapper
  */
 public class Fetcher<K, V> implements SubscriptionState.Listener, Closeable {
     private final Logger log;
+
+    //负责网络通信
     private final ConsumerNetworkClient client;
     private final Time time;
+    //积累到minBytes字节时再响应
     private final int minBytes;
     private final int maxBytes;
+    //等待FetchResponse的最长时间
     private final int maxWaitMs;
+    //每次fetch操作的最大字节数
     private final int fetchSize;
     private final long retryBackoffMs;
     private final int maxPollRecords;
     private final boolean checkCrcs;
+    //记录kafka集群的元数据
     private final Metadata metadata;
     private final FetchManagerMetrics sensors;
+    //记录每个TopicPartition的消费情况
     private final SubscriptionState subscriptions;
+    //每个FetchResponse首先会转换成CompleteFetch对象进入此队列缓存
     private final ConcurrentLinkedQueue<CompletedFetch> completedFetches;
     private final BufferSupplier decompressionBufferSupplier = BufferSupplier.create();
 
@@ -111,6 +119,7 @@ public class Fetcher<K, V> implements SubscriptionState.Listener, Closeable {
     private final ExtendedDeserializer<V> valueDeserializer;
     private final IsolationLevel isolationLevel;
 
+    //保存了CompletedFetch解析后的结果集合
     private PartitionRecords nextInLineRecords = null;
 
     public Fetcher(LogContext logContext,
@@ -195,11 +204,14 @@ public class Fetcher<K, V> implements SubscriptionState.Listener, Closeable {
     public int sendFetches() {
         Map<Node, FetchRequest.Builder> fetchRequestMap = createFetchRequests();
         for (Map.Entry<Node, FetchRequest.Builder> fetchEntry : fetchRequestMap.entrySet()) {
+
+
             final FetchRequest.Builder request = fetchEntry.getValue();
             final Node fetchTarget = fetchEntry.getKey();
 
             log.debug("Sending {} fetch for partitions {} to broker {}", isolationLevel, request.fetchData().keySet(),
                     fetchTarget);
+            //缓存在unsent队列上
             client.send(fetchTarget, request)
                     .addListener(new RequestFutureListener<ClientResponse>() {
                         @Override
@@ -220,10 +232,13 @@ public class Fetcher<K, V> implements SubscriptionState.Listener, Closeable {
                             for (Map.Entry<TopicPartition, FetchResponse.PartitionData> entry : response.responseData().entrySet()) {
                                 TopicPartition partition = entry.getKey();
                                 long fetchOffset = request.fetchData().get(partition).fetchOffset;
+
+
                                 FetchResponse.PartitionData fetchData = entry.getValue();
 
                                 log.debug("Fetch {} at offset {} for partition {} returned fetch data {}",
                                         isolationLevel, fetchOffset, partition, fetchData);
+
                                 completedFetches.add(new CompletedFetch(partition, fetchOffset, fetchData, metricAggregator,
                                         resp.requestHeader().apiVersion()));
                             }
@@ -774,9 +789,12 @@ public class Fetcher<K, V> implements SubscriptionState.Listener, Closeable {
         Cluster cluster = metadata.fetch();
         Map<Node, LinkedHashMap<TopicPartition, FetchRequest.PartitionData>> fetchable = new LinkedHashMap<>();
         for (TopicPartition partition : fetchablePartitions()) {
+            //查找分区的Leader副本所在的Node
             Node node = cluster.leaderFor(partition);
             if (node == null) {
+                //找不到Leader副本则准备更新Metadata
                 metadata.requestUpdate();
+                //是否还有pending请求
             } else if (!this.client.hasPendingRequests(node)) {
                 // if there is a leader and no in-flight requests, issue a new fetch
                 LinkedHashMap<TopicPartition, FetchRequest.PartitionData> fetch = fetchable.get(node);
@@ -786,6 +804,7 @@ public class Fetcher<K, V> implements SubscriptionState.Listener, Closeable {
                 }
 
                 long position = this.subscriptions.position(partition);
+                //记录每个分区对应的position,即要fetch的消息的offset
                 fetch.put(partition, new FetchRequest.PartitionData(position, FetchRequest.INVALID_LOG_START_OFFSET,
                         this.fetchSize));
                 log.debug("Added {} fetch request for partition {} at offset {} to node {}", isolationLevel,
@@ -796,6 +815,7 @@ public class Fetcher<K, V> implements SubscriptionState.Listener, Closeable {
         }
 
         // create the fetches
+        //对fetchable集合进行转换，将发往同一个Node节点的所有TopicPartition的position信息封装成一个FetchRequest对象
         Map<Node, FetchRequest.Builder> requests = new HashMap<>();
         for (Map.Entry<Node, LinkedHashMap<TopicPartition, FetchRequest.PartitionData>> entry : fetchable.entrySet()) {
             Node node = entry.getKey();
@@ -813,6 +833,8 @@ public class Fetcher<K, V> implements SubscriptionState.Listener, Closeable {
     private PartitionRecords parseCompletedFetch(CompletedFetch completedFetch) {
         TopicPartition tp = completedFetch.partition;
         FetchResponse.PartitionData partition = completedFetch.partitionData;
+
+
         long fetchOffset = completedFetch.fetchedOffset;
         PartitionRecords partitionRecords = null;
         Errors error = partition.error;

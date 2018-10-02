@@ -15,6 +15,7 @@
  * limitations under the License.
  */
 package org.apache.kafka.clients.consumer;
+//重置策略
 
 public enum OffsetResetStrategy {
     LATEST, EARLIEST, NONE

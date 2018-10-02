@@ -838,6 +838,9 @@ public final class ConsumerCoordinator extends AbstractCoordinator {
                 .compose(new OffsetFetchResponseHandler());
     }
 
+    /**
+     * 处理OffsetFetchResponse
+     */
     private class OffsetFetchResponseHandler extends CoordinatorResponseHandler<OffsetFetchResponse, Map<TopicPartition, OffsetAndMetadata>> {
         @Override
         public void handle(OffsetFetchResponse response, RequestFuture<Map<TopicPartition, OffsetAndMetadata>> future) {
@@ -875,13 +878,14 @@ public final class ConsumerCoordinator extends AbstractCoordinator {
                     }
                     return;
                 } else if (data.offset >= 0) {
+                    //记录正常的offset
                     // record the position with the offset (-1 indicates no committed offset to fetch)
                     offsets.put(tp, new OffsetAndMetadata(data.offset, data.metadata));
                 } else {
                     log.debug("Found no committed offset for partition {}", tp);
                 }
             }
-
+      //传播offsets集合,最终通过fetchCommittedIffsets()方法返回
             future.complete(offsets);
         }
     }
