@@ -1101,14 +1101,16 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         try {
             if (timeout < 0)
                 throw new IllegalArgumentException("Timeout must not be negative");
-
+            // 如果没有任何订阅，抛出异常
             if (this.subscriptions.hasNoSubscriptionOrUserAssignment())
                 throw new IllegalStateException("Consumer is not subscribed to any topics or assigned any partitions");
 
             // poll for new data until the timeout expires
+            // 一直poll新数据直到超时
             long start = time.milliseconds();
             long remaining = timeout;
             do {
+                // 获取数据，如果自动提交，则进行偏移量自动提交，如果设置offset重置，则进行offset重置
                 Map<TopicPartition, List<ConsumerRecord<K, V>>> records = pollOnce(remaining);
                 if (!records.isEmpty()) {
                     // before returning the fetched records, we can send off the next round of fetches
@@ -1117,9 +1119,11 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
                     //
                     // NOTE: since the consumed position has already been updated, we must not allow
                     // wakeups or any other errors to be triggered prior to returning the fetched records.
+                    // 再返回结果之前，我们可以进行下一轮的fetch请求，避免阻塞等待
                     if (fetcher.sendFetches() > 0 || client.hasPendingRequests())
                         client.pollNoWakeup();
 
+                    // 如果有拦截器进行拦截，没有直接返回
                     if (this.interceptors == null)
                         return new ConsumerRecords<>(records);
                     else
@@ -1144,10 +1148,12 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      */
     private Map<TopicPartition, List<ConsumerRecord<K, V>>> pollOnce(long timeout) {
         client.maybeTriggerWakeup();
+        // 轮询coordinator事件，处理周期性的offset提交
         coordinator.poll(time.milliseconds(), timeout);
 
         // fetch positions if we have partitions we're subscribed to that we
         // don't know the offset for
+        // 轮询coordinator事件，处理周期性的offset提交
         if (!subscriptions.hasAllFetchPositions())
             updateFetchPositions(this.subscriptions.missingFetchPositions());
 
@@ -1173,6 +1179,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
 
         // after the long poll, we should check whether the group needs to rebalance
         // prior to returning data so that the group can stabilize faster
+        // 早长时间的poll之后，我们应该在返回数据之前检查是否这个组需要重新平衡，以至于这个组能够迅速的稳定
         if (coordinator.needRejoin())
             return Collections.emptyMap();
 

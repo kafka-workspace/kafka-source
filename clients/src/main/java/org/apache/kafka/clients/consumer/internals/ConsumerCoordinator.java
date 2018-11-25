@@ -284,7 +284,7 @@ public final class ConsumerCoordinator extends AbstractCoordinator {
         invokeCompletedOffsetCommitCallbacks();
 
         if (subscriptions.partitionsAutoAssigned()) {
-            if (coordinatorUnknown()) {
+            if (coordinatorUnknown()) {//检测是否需要重新查找GroupCoordinator
                 ensureCoordinatorReady();
                 now = time.milliseconds();
             }

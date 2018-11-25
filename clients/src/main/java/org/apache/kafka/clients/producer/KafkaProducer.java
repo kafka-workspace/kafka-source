@@ -232,14 +232,21 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
     private static final String JMX_PREFIX = "kafka.producer";
     public static final String NETWORK_THREAD_PREFIX = "kafka-producer-network-thread";
 
+
+    //生产者的唯一标识
     private final String clientId;
     // Visible for testing
     final Metrics metrics;
+    //分区选择器
     private final Partitioner partitioner;
+    //消息的最大长度
     private final int maxRequestSize;
+    //发送单个消息的缓冲区大小
     private final long totalMemorySize;
     private final Metadata metadata;
+    //用户收集缓存消息
     private final RecordAccumulator accumulator;
+    //发送消息的sender任务
     private final Sender sender;
     private final Thread ioThread;
     private final CompressionType compressionType;
@@ -768,8 +775,12 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
         try {
             // first make sure the metadata for the topic is available
             ClusterAndWaitTime clusterAndWaitTime = waitOnMetadata(record.topic(), record.partition(), maxBlockTimeMs);
+
+
             long remainingWaitMs = Math.max(0, maxBlockTimeMs - clusterAndWaitTime.waitedOnMetadataMs);
+
             Cluster cluster = clusterAndWaitTime.cluster;
+
             byte[] serializedKey;
             try {
                 serializedKey = keySerializer.serialize(record.topic(), record.headers(), record.key());
@@ -778,6 +789,8 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
                         " to class " + producerConfig.getClass(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG).getName() +
                         " specified in key.serializer", cce);
             }
+
+
             byte[] serializedValue;
             try {
                 serializedValue = valueSerializer.serialize(record.topic(), record.headers(), record.value());
@@ -786,10 +799,12 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
                         " to class " + producerConfig.getClass(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG).getName() +
                         " specified in value.serializer", cce);
             }
+            //计算消息发送的分区
             int partition = partition(record, serializedKey, serializedValue, cluster);
             tp = new TopicPartition(record.topic(), partition);
 
             setReadOnly(record.headers());
+
             Header[] headers = record.headers().toArray();
 
             int serializedSize = AbstractRecords.estimateSizeInBytesUpperBound(apiVersions.maxUsableProduceMagic(),
@@ -861,7 +876,9 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
     private ClusterAndWaitTime waitOnMetadata(String topic, Integer partition, long maxWaitMs) throws InterruptedException {
         // add topic to metadata topic list if it is not there already and reset expiry
         metadata.add(topic);
+        //集群
         Cluster cluster = metadata.fetch();
+        //主题的分区数量
         Integer partitionsCount = cluster.partitionCountForTopic(topic);
         // Return cached metadata if we have it, and if the record's partition is either undefined
         // or within the known partition range

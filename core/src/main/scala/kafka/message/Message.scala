@@ -154,6 +154,7 @@ class Message(val buffer: ByteBuffer,
    * @param payloadSize The size of the payload to use
    * @param magicValue the magic value to use
    */
+
   def this(bytes: Array[Byte], 
            key: Array[Byte],
            timestamp: Long,
