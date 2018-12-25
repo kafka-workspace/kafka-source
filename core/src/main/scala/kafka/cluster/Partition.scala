@@ -137,13 +137,30 @@ class Partition(val topic: String,
     }
   }
 
+  /**
+    * 创建副本
+    * @param replicaId
+    * @param isNew
+    * @return
+    */
+
   def getOrCreateReplica(replicaId: Int = localBrokerId, isNew: Boolean = false): Replica = {
     assignedReplicaMap.getAndMaybePut(replicaId, {
+
+      //判断是否为Local Replica对象
       if (isReplicaLocal(replicaId)) {
+        //获取配置信息,zookeeper中的配置会覆盖默认的配置
         val config = LogConfig.fromProps(logManager.defaultConfig.originals,
                                          AdminUtils.fetchEntityConfig(zkUtils, ConfigType.Topic, topic))
+
+        //创建Local Replica对应的log,如果log已经存在,则直接返回
         val log = logManager.getOrCreateLog(topicPartition, config, isNew)
+
+        //获取指定log目录对应饿OffsetCheckpoint对象，负责管理log目录下的replication-offset-checkpoint文件
         val checkpoint = replicaManager.highWatermarkCheckpoints(log.dir.getParent)
+
+        //将replication-offset-checkpoint文件中的HW信息形成MAP
+
         val offsetMap = checkpoint.read()
         if (!offsetMap.contains(topicPartition))
           info(s"No checkpointed highwatermark is found for partition $topicPartition")

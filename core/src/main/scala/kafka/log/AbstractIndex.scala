@@ -45,17 +45,23 @@ abstract class AbstractIndex[K, V](@volatile var file: File, val baseOffset: Lon
 
   @volatile
   protected var mmap: MappedByteBuffer = {
+
+    //如果索引文件不存在，则创建文件并返回true，反之返回false
     val newlyCreated = file.createNewFile()
     val raf = if (writable) new RandomAccessFile(file, "rw") else new RandomAccessFile(file, "r")
     try {
       /* pre-allocate the file if necessary */
+      //对于新创建的索引文件进行扩容
       if(newlyCreated) {
         if(maxIndexSize < entrySize)
           throw new IllegalArgumentException("Invalid max index size: " + maxIndexSize)
+
+        //根据maxIndexSize的值对索引文件进行扩容,扩容结果是小于maxIndexSize的最大的8的倍数
         raf.setLength(roundDownToExactMultiple(maxIndexSize, entrySize))
       }
 
       /* memory-map the file */
+      //进行内存映射
       val len = raf.length()
       val idx = {
         if (writable)
@@ -64,6 +70,7 @@ abstract class AbstractIndex[K, V](@volatile var file: File, val baseOffset: Lon
           raf.getChannel.map(FileChannel.MapMode.READ_ONLY, 0, len)
       }
       /* set the position in the index for the next entry */
+      //将新创建的索引文件的position设置为0，防止数据覆盖
       if(newlyCreated)
         idx.position(0)
       else
@@ -76,12 +83,15 @@ abstract class AbstractIndex[K, V](@volatile var file: File, val baseOffset: Lon
   }
 
   /**
+    * 最大索引项个数
    * The maximum number of entries this index can hold
    */
   @volatile
   private[this] var _maxEntries = mmap.limit() / entrySize
 
-  /** The number of entries in this index */
+  /**
+    * 索引项个数
+    * The number of entries in this index */
   @volatile
   protected var _entries = mmap.position() / entrySize
 
@@ -255,6 +265,8 @@ abstract class AbstractIndex[K, V](@volatile var file: File, val baseOffset: Lon
     indexSlotRangeFor(idx, target, searchEntity)._2
 
   /**
+    *
+    * 二分查找
    * Lookup lower and upper bounds for the given target.
    */
   private def indexSlotRangeFor(idx: ByteBuffer, target: Long, searchEntity: IndexSearchEntity): (Int, Int) = {

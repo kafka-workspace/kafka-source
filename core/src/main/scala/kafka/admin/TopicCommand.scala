@@ -92,13 +92,20 @@ object TopicCommand extends Logging {
   }
 
   def createTopic(zkUtils: ZkUtils, opts: TopicCommandOptions) {
+
+    //获取topic参数
     val topic = opts.options.valueOf(opts.topicOpt)
+    //将config参数解析成Propertites
     val configs = parseTopicConfigsToBeAdded(opts)
+    //读取if-not-exists参数
     val ifNotExists = opts.options.has(opts.ifNotExistsOpt)
+    //检测Topic名称是否包含"."或"-"字符,若包含则输出警告信息
     if (Topic.hasCollisionChars(topic))
       println("WARNING: Due to limitations in metric names, topics with a period ('.') or underscore ('_') could collide. To avoid issues it is best to use either, but not both.")
     try {
+       //检测是否有relica-assignment参数
       if (opts.options.has(opts.replicaAssignmentOpt)) {
+        //replica-assignment参数的格式类似:0:1:2,3:4:5,6:7:8其中指定了编号为0的分区
         val assignment = parseReplicaAssignment(opts.options.valueOf(opts.replicaAssignmentOpt))
         AdminUtils.createOrUpdateTopicPartitionAssignmentPathInZK(zkUtils, topic, assignment, configs, update = false)
       } else {

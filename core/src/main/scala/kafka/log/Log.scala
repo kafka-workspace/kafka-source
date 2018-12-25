@@ -134,8 +134,8 @@ case class CompletedTxn(producerId: Long, firstOffset: Long, lastOffset: Long, i
  * @param producerIdExpirationCheckIntervalMs How often to check for producer ids which need to be expired
  */
 @threadsafe
-class Log(@volatile var dir: File,
-          @volatile var config: LogConfig,
+class Log(@volatile var dir: File, //对应的磁盘目录
+          @volatile var config: LogConfig, //
           @volatile var logStartOffset: Long,
           @volatile var recoveryPoint: Long,
           scheduler: Scheduler,
@@ -622,12 +622,15 @@ class Log(@volatile var dir: File,
    */
   private def append(records: MemoryRecords, isFromClient: Boolean, assignOffsets: Boolean, leaderEpoch: Int): LogAppendInfo = {
     maybeHandleIOException(s"Error while appending records to $topicPartition in dir ${dir.getParent}") {
+
+      //检查消息长度和CRC32校验码,返回LogAppendInfo对象
       val appendInfo = analyzeAndValidateRecords(records, isFromClient = isFromClient)
 
       // return if we have no valid messages or if this is a duplicate of the last appended entry
       if (appendInfo.shallowCount == 0)
         return appendInfo
 
+      //
       // trim any invalid bytes or partial messages before appending it to the on-disk log
       var validRecords = trimInvalidBytes(records, appendInfo)
 

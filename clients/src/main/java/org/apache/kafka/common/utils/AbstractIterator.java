@@ -25,6 +25,11 @@ import java.util.NoSuchElementException;
  */
 public abstract class AbstractIterator<T> implements Iterator<T> {
 
+    /**
+     * 标识当前迭代器的状态
+     * READY:迭代器已经准备好迭代下一项
+     *
+     */
     private enum State {
         READY, NOT_READY, DONE, FAILED
     }
